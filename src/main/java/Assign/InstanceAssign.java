@@ -1,6 +1,5 @@
 package Assign;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -8,14 +7,15 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import Entities.App;
-import Entities.Instance;
-import Entities.Machine;
-import Entities.ResourceProportion;
+import InputEntities.App;
+import InputEntities.Instance;
+import InputEntities.ResourceProportion;
 import comparator.InstanceComparator;
-import comparator.MachineComparator;
 import machineCalc.MachineState;
-
+/*
+ * first fit 算法分配以及迁移实例
+ * 初赛时使用，复赛使用其他方法
+ */
 public class InstanceAssign {
 	private Map<Integer,ResourceProportion> machineType;
 	private  Map<Integer,Integer> typePosition;
@@ -45,11 +45,6 @@ public class InstanceAssign {
 		List<Movement> movement=new LinkedList<Movement>();
 		sort();
 		app_machine=App_machinePair();
-		for(Instance inst:insts) {
-			if(inst.getMachineid()>0) {
-				machines.get(inst.getMachineid()-1).addInstance(inst, apps);
-			}
-		}
 		method2(movement);
 		int unAssigned=0;
 		int assigned=0;
@@ -128,16 +123,24 @@ public class InstanceAssign {
 			index2[i+1]=typePosition.get(i+1);
 		}
 		double value=0.6D;
-		int liu=500;
+		double disvalue=0.2;
+		int liu=900;
 		while(index1<insts.size()) {
 			Instance inst=insts.get(index1);
 			int machineId=inst.getMachineid();
-			value=0.55;
+			if(machineId>liu&&index1<1000) {
+				System.out.println("实例"+inst.getInstId()+"跳过");
+				index1++;
+				continue;
+			}
+			value=0.55*(1+0.1*index1/insts.size());
+			disvalue= 0.9*(1-0.2*index1/insts.size());
 			int typeOfInst=app_machine[inst.getAppId()];
 			if(machineId>liu&&machines.get(machineId-1).getType()==typeOfInst
 					&&machines.get(machineId-1).checkAll(apps)
 					&&machines.get(machineId-1).checkApp(mapConstraints)
-					&&machines.get(machineId-1).checkCpu(inst, apps, value)) {
+					&&machines.get(machineId-1).checkCpu(null, apps, value)
+					&&machines.get(machineId-1).average(null, apps,disvalue)) {
 				System.out.println("实例"+inst.getInstId()+"还在"+"machine"+inst.getMachineid()
 				+" 当前第"+insts.indexOf(inst)+"个实例");
 				index1++;
@@ -149,7 +152,7 @@ public class InstanceAssign {
 			if(index2[typeOfInst]>=position) {
 				index2[typeOfInst]=typePosition.get(typeOfInst);
 			}
-			while(value<0.65) {
+			while(value<1) {
 				while(index2[typeOfInst]<machines.size()) {
 					if(index2[typeOfInst]<liu) {
 						index2[typeOfInst]=liu;
@@ -157,8 +160,11 @@ public class InstanceAssign {
 					}
 
 					MachineState ms=machines.get(index2[typeOfInst]);
-					if(ms.checkApp(mapConstraints)&&ms.checkAll(inst, apps)
-							&&ms.checkCpu(inst, apps,value)&&ms.checkApp(inst, mapConstraints)) {
+					if(ms.checkApp(mapConstraints)
+							&&ms.checkAll(inst, apps)
+							&&ms.checkCpu(inst, apps,value)
+							&&ms.checkApp(inst, mapConstraints)
+							&&ms.average(inst, apps, disvalue)) {
 						if(inst.getMachineid()>0)
 							machines.get(inst.getMachineid()-1).deleteInstance(inst, apps);
 						if(inst.getMachineid()!=ms.getMachine().getMachineId())
@@ -186,6 +192,7 @@ public class InstanceAssign {
 						}else {
 							state=false;
 							value=value+0.03;
+							disvalue+=0.03;
 							if(value>1) {
 								index1++;
 								break;
@@ -198,7 +205,87 @@ public class InstanceAssign {
 			index1++;
 		}
 	}
+	//与方式2类似，实例与机器种类之间关联不考虑
+	public void method3(List<Movement> movement) {
+		//循环标志
+		boolean state=false;
+		//选择标志
+		boolean state2=false;
+		int index1=0;
+		int index2=0;
+		double value=0.6D;
+		double disvalue=0.2;
+		int liu=1000;
+		while(index1<insts.size()) {
+			Instance inst=insts.get(index1);
+			int machineId=inst.getMachineid();
+			value=0.6*(1+0.1 *index1/insts.size());
+			disvalue= 0.2*(1-0.2*index1/insts.size());
+			int typeOfInst=app_machine[inst.getAppId()];
+			if(machineId>liu&&machines.get(machineId-1).getType()==typeOfInst
+					&&machines.get(machineId-1).checkAll(apps)
+					&&machines.get(machineId-1).checkApp(mapConstraints)
+					&&machines.get(machineId-1).checkCpu(null, apps, 0.6)
+					&&machines.get(machineId-1).average(null, apps,disvalue)) {
+				System.out.println("实例"+inst.getInstId()+"还在"+"machine"+inst.getMachineid()
+				+" 当前第"+insts.indexOf(inst)+"个实例");
+				index1++;
+				continue;
+			}
+			
+			while(value<1) {
+				while(index2<machines.size()) {
+					if(index2<liu) {
+						index2=liu;
+						continue;
+					}
 
+					MachineState ms=machines.get(index2);
+					if(ms.checkApp(mapConstraints)
+							&&ms.checkAll(inst, apps)
+							&&ms.checkCpu(inst, apps,value)
+							&&ms.checkApp(inst, mapConstraints)
+							&&ms.average(inst, apps, disvalue)) {
+						if(inst.getMachineid()>0)
+							machines.get(inst.getMachineid()-1).deleteInstance(inst, apps);
+						if(inst.getMachineid()!=ms.getMachine().getMachineId())
+							movement.add(new Movement(inst.getInstId(), ms.getMachine().getMachineId()));
+						ms.addInstance(inst, apps);
+						//inst.setMachineid(ms.getMachine().getMachineId());
+						System.out.println("实例"+inst.getInstId()+"分配到"+ms.getMachine().getMachineId()
+								+" 当前第"+insts.indexOf(inst)+"个实例");
+						index2++;
+						state2=true;
+						break;
+					}else {
+						index2++;
+					}
+				}
+				if(state2) {
+					state2=false;
+					break;
+				}else {
+					int position1=machines.size();
+					if(index2>=position1) {
+						index2=0;
+						if(state==false) {
+							state=true;
+						}else {
+							state=false;
+							value=value+0.1;
+							disvalue+=0.05;
+							if(value>1) {
+								index1++;
+								break;
+							}
+
+						}
+					}
+				}
+			}
+			index1++;
+		}
+	}
 
 	public void sort() {
 		//		Collections.sort(machines, new Comparator<MachineState>() {
@@ -215,7 +302,7 @@ public class InstanceAssign {
 			@Override
 			public int compare(Instance arg0, Instance arg1) {
 				// TODO Auto-generated method stub
-				return new InstanceComparator(apps).compare(arg0, arg1);
+					return new InstanceComparator(apps).compare(arg0, arg1);
 			}
 
 		});

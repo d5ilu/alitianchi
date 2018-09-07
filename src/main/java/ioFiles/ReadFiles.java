@@ -4,29 +4,34 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-import Entities.App;
-import Entities.AppInterference;
-import Entities.Instance;
-import Entities.Machine;
+import InputEntities.App;
+import InputEntities.AppInterference;
+import InputEntities.Instance;
+import InputEntities.Job;
+import InputEntities.Machine;
 import cn.hutool.core.text.csv.CsvData;
 import cn.hutool.core.text.csv.CsvReader;
 import cn.hutool.core.text.csv.CsvRow;
 import machineCalc.MachineState;
-
+/*
+ * 读取数据文件的类，分别包含读取几种数据的方法
+ * 使用开源的csvreader
+ */
 public class ReadFiles {
 	private static final int Applength=4;
 	private static final int MachineLength=8;
 	private static final int instLength=5;
+	private static final int pointNum=15;
 	private static final CsvReader reader=new CsvReader();
 	public static List<App> readAppFile(String path){
 		List<App> apps=new ArrayList<App>();
-		File file =new File(path+"app_resources.csv");
+		File file =new File(path);
 		CsvData data=reader.read(file);
 		List<CsvRow> rows=data.getRows();
 		for(CsvRow row:rows) {
 			int appId=Integer.parseInt(row.get(0).substring(Applength));
-			List<Double> cpu=getList(row.get(1));
-			List<Double> memory=getList(row.get(2));
+			List<Float> cpu=getList(row.get(1));
+			List<Float> memory=getList(row.get(2));
 			int disk=(int) Double.parseDouble(row.get(3));
 			int P=Integer.parseInt(row.get(4));
 			int M=Integer.parseInt(row.get(5));
@@ -37,13 +42,13 @@ public class ReadFiles {
 	}
 	public static List<MachineState> ReadMachinesFile(String path){
 		List<MachineState> machines =new ArrayList<MachineState>();
-		File file =new File(path+"machine_resources.csv");
+		File file =new File(path);
 		CsvData data=reader.read(file);
 		List<CsvRow> rows=data.getRows();
 		for(CsvRow row:rows) {
 			int machineId=Integer.parseInt(row.get(0).substring(MachineLength));
-			double cpu=Double.parseDouble(row.get(1));
-			double memory=Double.parseDouble(row.get(2));
+			float cpu=Float.parseFloat(row.get(1));
+			float memory=Float.parseFloat(row.get(2));
 			int disk=Integer.parseInt(row.get(3));
 			int P=Integer.parseInt(row.get(4));
 			int M=Integer.parseInt(row.get(5));
@@ -54,7 +59,7 @@ public class ReadFiles {
 	}
 	public static List<Instance> readInstanceFile(String path){
 		List<Instance> insts=new ArrayList<Instance>();
-		File file =new File(path+"instance_deploy.csv");
+		File file =new File(path);
 		CsvData data=reader.read(file);
 		List<CsvRow> rows=data.getRows();
 		for(CsvRow row:rows) {
@@ -67,9 +72,30 @@ public class ReadFiles {
 		}
 		return insts;
 	}
+	public static List<Job> readJobFile(String path){
+		List<Job> jobs=new ArrayList<Job>();
+		File file =new File(path);
+		CsvData data=reader.read(file);
+		List<CsvRow> rows=data.getRows();
+		for(CsvRow csvrow:rows) {
+			String id=csvrow.get(0);
+			float cpu=Float.parseFloat(csvrow.get(1));
+			float memory=Float.parseFloat(csvrow.get(2));
+			int instnum=Integer.parseInt(csvrow.get(3));
+			int time=Integer.parseInt(csvrow.get(4));
+			List<String> list=new ArrayList<String>();
+			for(int i=5;i<csvrow.size();i++) {
+				if(!csvrow.get(i).equals("")) {
+					list.add(csvrow.get(i));
+				}
+			}
+			jobs.add(new Job(id, cpu, memory, instnum, time, list));
+		}
+		return jobs;
+	}
 	public static List<AppInterference> readInterferenceFile(String path){
 		List<AppInterference> interferences=new ArrayList<AppInterference>();
-		File file =new File(path+"app_interference.csv");
+		File file =new File(path);
 		CsvData data=reader.read(file);
 		List<CsvRow> rows=data.getRows();
 		for(CsvRow row:rows) {
@@ -80,21 +106,24 @@ public class ReadFiles {
 		}
 		return interferences;
 	}
-	public static List<Double> getList(String str){
-		List<Double> res=new ArrayList<Double>();
+	public static List<Float> getList(String str){
+		List<Float> res=new ArrayList<Float>();
 		int len=str.length();
 		int left=0;
 		int right=0;
 		while(right<len) {
 			if(str.charAt(right)=='|') {
-				double value=Double.parseDouble(str.substring(left, right));
-				res.add(value);
+				float value=Float.parseFloat(str.substring(left, right));
+				for(int i=0;i<pointNum;i++) {
+					res.add(value);
+				}
 				left=right+1;
 			}
 			right++;
 		}
-		res.add(Double.parseDouble(str.substring(left)));
+		for(int i=0;i<pointNum;i++) {
+			res.add(Float.parseFloat(str.substring(left)));
+		}
 		return res;
 	}
-
 }

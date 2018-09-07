@@ -1,5 +1,9 @@
 package Assign;
 
+/*
+ * 输出到csv文件的格式
+ * 初赛时使用，复赛事改变输出格式
+ */
 public class Movement {
 	int instId;
 	int machineId;

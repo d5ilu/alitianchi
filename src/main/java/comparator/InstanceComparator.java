@@ -2,8 +2,8 @@ package comparator;
 
 import java.util.Comparator;
 
-import Entities.App;
-import Entities.Instance;
+import InputEntities.App;
+import InputEntities.Instance;
 
 public class InstanceComparator implements Comparator<Instance>{
 	private App[] apps;
